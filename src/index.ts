@@ -2,20 +2,23 @@ import { EdifactParser } from "./parsers/edifactParser";
 import fs from "fs";
 
 async function main() {
-    const file_path = "/home/fuguang/edi-parser/data/0200524552.524c5792-201d-11ef-b3dc-2f68ac1d320a.edi";
-    const output_path = "/home/fuguang/edi-parser/data/output.txt";
+    const data_dir = "data";
+    const output_dir = "data";
 
-    // await fs.promises.writeFile(output_path, output_data);
-    const document_string = await fs.promises.readFile(file_path, "utf-8");
-    const parser = new EdifactParser(document_string);
-    const result = await parser.parse();
+    const files = await fs.promises.readdir(data_dir);
+    for (const file of files) {
+        if (file.endsWith(".edi")) {
+            const file_content = await fs.promises.readFile(`${data_dir}/${file}`, "utf-8");
 
-    const segments = await parser.parseSegments();
-
-    for (const segment of segments) {
-        fs.promises.writeFile(output_path, JSON.stringify(segment.getIResult()) + "\n", { flag: "a" });
+            const parser = new EdifactParser(file_content);
+            const segments = await parser.parseSegments();
+            
+            const output_file = `${output_dir}/${file.replace(".edi", ".jsonl")}`;
+            for (const segment of segments) {
+                await fs.promises.writeFile(output_file, JSON.stringify(segment.getIResult()) + "\n", { flag: "a" });
+            }
+        }
     }
-
     
 }
 
