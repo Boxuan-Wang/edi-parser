@@ -1,0 +1,24 @@
+{
+  "name": "edi-parser",
+  "version": "1.0.0",
+  "description": "extracting edi information",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --fix .ts ",
+    "compile": "tsc"
+
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.6",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "eslint": "^9.5.0",
+    "glob": "^10.4.2",
+    "mocha": "^10.4.0"
+  }
+}
