@@ -13,9 +13,9 @@ async function main() {
             const parser = new EdifactParser(file_content);
             const segments = await parser.parseSegments();
             
-            const output_file = `${output_dir}/${file.replace(".edi", ".jsonl")}`;
+            const output_file = `${output_dir}/${file.replace(".edi", ".txt")}`;
             for (const segment of segments) {
-                await fs.promises.writeFile(output_file, JSON.stringify(segment.getIResult()) + "\n", { flag: "a" });
+                await fs.promises.writeFile(output_file, segment.getExplanation() + "\n", { flag: "a" });
             }
         }
     }

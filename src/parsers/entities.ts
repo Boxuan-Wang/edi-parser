@@ -1,40 +1,5 @@
 import { EdiReleaseSchemaElement, EdiReleaseSchemaSegment } from "../schemas/schemas";
-import * as constants from "../constants";
-
-interface IEdiMessageResult<T> {
-  getIResult(): T;
-}
-
-
-type IEdiElement = {
-  key: string;
-  type: ElementType;
-  value?: string;
-  components?: IEdiElement[];
-  id: string;
-  desc: string;
-  dataType: string;
-  required: boolean;
-  minLength: number;
-  maxLength: number;
-  codeValue?: string;
-  definition: string;
-}
-
-type IEdiSegment = {
-  key: string;
-  id: string;
-  desc: string;
-  purpose: string;
-  elements: IEdiElement[];
-
-}
-
-type IEdiMessage = {
-  ediVersion: EdiVersion;
-  segments: IEdiSegment[];
-
-}
+import { IEdiElement } from "./type";
 
 export class EdiVersion implements IEdiMessageResult<EdiVersion> {
   public release?: string; // D96A
@@ -43,6 +8,12 @@ export class EdiVersion implements IEdiMessageResult<EdiVersion> {
   constructor(release?: string, version?: string) {
     this.release = release;
     this.version = version;
+  }
+  getCodeValue(): string | undefined {
+    return undefined;
+  }
+  getExplanation(): string[] {
+     return [`EdiVersion: ${this.release} ${this.version}`];
   }
 
   getIResult(): EdiVersion {
@@ -68,6 +39,15 @@ export class EdiSegment implements IEdiMessageResult<IEdiSegment> {
     this.endingDelimiter = endingDelimiter;
     this.elements = [];
     this.isInvalidSegment = false;
+  }
+  getExplanation(): string[] {
+    let explanation: string[] = [];
+    explanation.push(this.id);
+    if (this.getCodeValue()) {
+      explanation.push(this.getCodeValue() || "");
+    }
+    explanation = explanation.concat(this.elements.flatMap(e => e.getExplanation()).filter(e => e !== ""));
+    return explanation;
   }
 
   public getKey(): string {
@@ -123,12 +103,19 @@ export class EdiSegment implements IEdiMessageResult<IEdiSegment> {
       elements: this.elements.map(e => e.getIResult())
     };
   }
+
+  getCodeValue(): string | undefined {
+    for (const element of this.elements) {
+      if (element.getCodeValue()) {
+        return element.getCodeValue();
+      }
+    }
+    return undefined;
+  }
+  
 }
 
-export enum ElementType {
-  dataElement = "Data Element",
-  componentElement = "Component Element"
-}
+
 
 export class DiagnosticError {
   error: string;
@@ -157,6 +144,7 @@ export class EdiElement implements IEdiMessageResult<IEdiElement> {
   public segmentName: string;
   public components?: EdiElement[];
   public ediReleaseSchemaElement?: EdiReleaseSchemaElement;
+  public codeValue?: string;
 
   constructor(type: ElementType, startIndex: number, endIndex: number, separator: string, segmentName: string, segmentStartIndex: number, designatorIndex: string) {
     this.type = type;
@@ -166,6 +154,18 @@ export class EdiElement implements IEdiMessageResult<IEdiElement> {
     this.segmentName = segmentName;
     this.segmentStartIndex = segmentStartIndex;
     this.designatorIndex = designatorIndex;
+  }
+
+  getExplanation(): string[] {
+      if (this.components && this.components.length > 0) {
+        return this.components.flatMap(e => e.getExplanation());
+      }
+      else if (this.getCodeValue()) {
+        return [];
+      }
+      else {
+        return this.value ? [this.value] : [];
+      }
   }
 
   public getKey(): string {
@@ -321,19 +321,22 @@ export class EdiElement implements IEdiMessageResult<IEdiElement> {
     return this.separator + this.value;
   }
 
-  getIResult(): IEdiElement {
-    let codeValue: string | undefined;
-    if (this.ediReleaseSchemaElement?.qualifierRef && this.value) {
+  private parseCodeValue(){
+    if (this?.codeValue == undefined && this.ediReleaseSchemaElement?.qualifierRef && this.value) {
       const codes = this.ediReleaseSchemaElement.getCodes();
       if (codes) {
         const elementValueCode = this.ediReleaseSchemaElement.getCodeOrNullByValue(this.value);
         if (elementValueCode) {
-          codeValue = elementValueCode.desc;
+          this.codeValue = elementValueCode.desc;
         } else {
-          codeValue = "Invalid code value";
+          this.codeValue = "Invalid code value";
         }
       }
     }
+  }
+
+  getIResult(): IEdiElement {
+    this.parseCodeValue()
 
     return {
       key: this.getKey(),
@@ -346,9 +349,25 @@ export class EdiElement implements IEdiMessageResult<IEdiElement> {
       required: this.ediReleaseSchemaElement!.required,
       minLength: this.ediReleaseSchemaElement!.minLength,
       maxLength: this.ediReleaseSchemaElement!.maxLength,
-      codeValue,
+      codeValue: this?.codeValue,
       definition: this.ediReleaseSchemaElement!.definition,
     };
+  }
+
+  getCodeValue(): string | undefined {
+    this.parseCodeValue()
+    if (this?.codeValue) {
+      return this.codeValue;
+    }
+
+    if (this?.components) {
+      for (const component of this.components) {
+        if (component.getCodeValue()) {
+          return component.getCodeValue();
+        }
+      }
+    }
+    return undefined;
   }
 }
 
@@ -359,11 +378,6 @@ export class EdiMessageSeparators {
   public releaseCharacter?: string; // escape char
 }
 
-export class EdiType {
-  static X12 = constants.ediDocument.x12.name;
-  static EDIFACT = constants.ediDocument.edifact.name;
-  static UNKNOWN = "unknown";
-}
 
 export class EdiMessage implements IEdiMessageResult<IEdiMessage> {
   separators: EdiMessageSeparators;
@@ -374,6 +388,12 @@ export class EdiMessage implements IEdiMessageResult<IEdiMessage> {
     this.separators = separators;
     this.ediVersion = ediVersion;
     this.segments = segments;
+  }
+  getCodeValue(): string | undefined {
+    throw new Error("Method not implemented.");
+  }
+  getExplanation(): string[] {
+    throw new Error("Method not implemented.");
   }
 
   getIResult(): IEdiMessage {
