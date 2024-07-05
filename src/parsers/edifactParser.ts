@@ -1,4 +1,5 @@
-import { EdiVersion, EdiSegment, EdiElement, ElementType, EdiMessageSeparators } from "./entities";
+import { EdiVersion, EdiSegment, EdiElement, EdiMessageSeparators } from "./entities";
+import { ElementType } from "./type_def";
 import { EdiParserBase } from "./ediParserBase";
 import { EdiReleaseSchemaSegment, EdiSchema } from "../schemas/schemas";
 import * as constants from "../constants";

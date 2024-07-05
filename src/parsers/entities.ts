@@ -1,5 +1,5 @@
 import { EdiReleaseSchemaElement, EdiReleaseSchemaSegment } from "../schemas/schemas";
-import { IEdiElement } from "./type";
+import { IEdiElement, IEdiSegment, IEdiMessageResult, ElementType, EdiType, segmentSummary, QTY, NAD } from "./type_def";
 
 export class EdiVersion implements IEdiMessageResult<EdiVersion> {
   public release?: string; // D96A
@@ -12,7 +12,7 @@ export class EdiVersion implements IEdiMessageResult<EdiVersion> {
   getCodeValue(): string | undefined {
     return undefined;
   }
-  getExplanation(): string[] {
+  getValueString(): string[] {
      return [`EdiVersion: ${this.release} ${this.version}`];
   }
 
@@ -40,14 +40,83 @@ export class EdiSegment implements IEdiMessageResult<IEdiSegment> {
     this.elements = [];
     this.isInvalidSegment = false;
   }
-  getExplanation(): string[] {
-    let explanation: string[] = [];
-    explanation.push(this.id);
-    if (this.getCodeValue()) {
-      explanation.push(this.getCodeValue() || "");
+
+  // // get the segment information in json format
+  // getSegmentSummaryInternal() {
+  //   let summary: segmentSummary = {};
+  //   if (this.components && this.components.length > 0) {
+  //     for (const element of this.components) {
+  //       const codecValue = element.getCodeValue();
+  //       if (element.value) {
+  //         switch (codecValue) {
+  //           case undefined: {
+  //             continue;
+  //           }
+  //           case "Invalid code value": {
+  //             continue;
+  //           }
+  //           case "Document/message date/time": {
+  //             summary.doc_time = new Date(element.value);
+  //           }
+  //           case "Delivery date/time, requested": {
+  //             summary.delivery_time_requested = new Date(element.value);
+  //           }
+  //           case "Buyer": {
+  //             summary.buyer = element.value;
+  //           }
+            
+  //         }
+  //       }
+  //     }
+  //     return summary;
+  //   }
+  //   else {
+  //     return undefined;
+  //   }
+  // }
+
+  getExplanation(): Record<string, any> {
+    let explanation: Record<string, any> = {};
+    // explanation.push(this.id);
+    const codeValue: string = this.getCodeValue() || "";
+    if (codeValue != "") {
+      switch (this.id) {
+        case "QTY": {
+          const qtyStrings: string[] = this.elements.flatMap(e => e.getValueString());
+          if (qtyStrings.length >= 1) {
+            const t: QTY = {
+              number: new Number(qtyStrings[0]).valueOf(),
+              uom: qtyStrings[1] ? qtyStrings[1] : undefined,
+            };
+            explanation[codeValue] = t;
+          }
+          else {
+            explanation[codeValue] = undefined;
+          }
+        }
+        case "DTM": {
+          const dateString: string[] = this.elements.flatMap(e => e.getValueString());
+          explanation[codeValue] = dateString[0] ? new Date(dateString[0]) : undefined;
+        }
+        case "NAD": {
+          const nadStrings: string[] = this.elements.flatMap(e => e.getValueString());
+          const name_and_address: NAD = {
+            id: nadStrings[0],
+            address: nadStrings.length > 0 ? nadStrings.slice(1).join(): undefined
+          };
+          explanation[codeValue] = name_and_address;
+        }
+        default: {
+          const segStrings: string[] = this.elements.flatMap(e => e.getValueString());
+          explanation[codeValue] = segStrings.length > 0 ? segStrings.join() : undefined;
+        }
+      }
     }
-    explanation = explanation.concat(this.elements.flatMap(e => e.getExplanation()).filter(e => e !== ""));
     return explanation;
+  }
+
+  getValueStrings(): string[] {
+    return this.elements.flatMap(e => e.getValueString());
   }
 
   public getKey(): string {
@@ -156,15 +225,16 @@ export class EdiElement implements IEdiMessageResult<IEdiElement> {
     this.designatorIndex = designatorIndex;
   }
 
-  getExplanation(): string[] {
+  // public method to get an array of strings, displaying values in the element
+  public getValueString(): string[] {
       if (this.components && this.components.length > 0) {
-        return this.components.flatMap(e => e.getExplanation());
+        return this.components.flatMap(e => e.getValueString());
       }
       else if (this.getCodeValue()) {
         return [];
       }
       else {
-        return this.value ? [this.value] : [];
+        return this.value ? [this.value] : [""];
       }
   }
 
@@ -378,6 +448,10 @@ export class EdiMessageSeparators {
   public releaseCharacter?: string; // escape char
 }
 
+export type IEdiMessage = {
+    ediVersion: EdiVersion;
+    segments: IEdiSegment[];
+}
 
 export class EdiMessage implements IEdiMessageResult<IEdiMessage> {
   separators: EdiMessageSeparators;
@@ -392,7 +466,7 @@ export class EdiMessage implements IEdiMessageResult<IEdiMessage> {
   getCodeValue(): string | undefined {
     throw new Error("Method not implemented.");
   }
-  getExplanation(): string[] {
+  getValueString(): string[] {
     throw new Error("Method not implemented.");
   }
 

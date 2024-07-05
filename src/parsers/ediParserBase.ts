@@ -1,4 +1,5 @@
-import { EdiVersion, EdiSegment, EdiElement, ElementType, EdiMessageSeparators, EdiMessage } from "./entities";
+import { EdiVersion, EdiSegment, EdiElement, EdiMessageSeparators, EdiMessage } from "./entities";
+import { ElementType } from "./type_def";
 import { EdiSchema } from "../schemas/schemas";
 import * as constants from "../constants";
 // import Utils from "../utils/utils";
@@ -36,6 +37,56 @@ export abstract class EdiParserBase {
 
     return parsingPromise;
   }
+
+  // // Public method to parse the EDI document to JSON files, each representing a message
+  // public async parseToJSON(): Promise<JSON[]> {
+  //   enum ParsingState {
+  //     readCOM,      // parsing communication detail
+  //     readRecord,   // parsing delivered record
+  //     readRequest,  // parsing delivery request
+  //     readVersion,  // parsing version info
+  //     readOneLine,  // parsing one line info
+  //     outOfMessage  // not within a message
+  //   };
+
+  //   let wholeResult: {[key: string]: any}[] = [{}];
+  //   let dic_result: {[key: string]: any} = {};
+
+  //   let state: ParsingState = ParsingState.outOfMessage;
+
+  //   // first parse segments
+  //   this.parse();
+  //   this.parseSegments();
+
+  //   if (this._segments) {
+  //     for (let i = 0; i < this._segments.length; i++) {
+  //       const segment = this._segments[i];
+  //       switch (state) {
+  //         case ParsingState.outOfMessage: {
+  //           if (segment.id == "UNH") {
+  //             state = ParsingState.readOneLine;
+  //           }
+  //           else {
+  //             continue;
+  //           }
+  //         }
+  //         case ParsingState.readOneLine: {
+  //           //todo: recursively call segments to extract information
+  //           if (segment.id == "UNT") {
+  //             // the end of a message
+  //             wholeResult.push(dic_result);
+  //             dic_result = {};
+  //             state = ParsingState.outOfMessage;
+  //           }
+  //           const seg_info = segment.getExplanation();
+  //           dic_result = {...dic_result, ...seg_info};
+  //         }
+
+  //       }
+  //     }
+  //   }
+  //   return wholeResult;
+  // }
 
   // Internal method to handle the actual parsing logic
   private async parseInternal(): Promise<EdiMessage> {
